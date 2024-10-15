@@ -1,0 +1,5 @@
+#pragma version 10
+
+smart_contracts.digital_marketplace.contract.DigitalMarketplace.clear_state_program:
+    int 1
+    return

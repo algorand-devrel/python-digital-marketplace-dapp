@@ -1,0 +1,257 @@
+#pragma version 10
+
+smart_contracts.digital_marketplace.contract.DigitalMarketplace.approval_program:
+    callsub __puya_arc4_router__
+    return
+
+
+// smart_contracts.digital_marketplace.contract.DigitalMarketplace.__puya_arc4_router__() -> uint64:
+__puya_arc4_router__:
+    proto 0 1
+    txn NumAppArgs
+    bz __puya_arc4_router___after_if_else@10
+    method "create_application(asset,uint64)void"
+    method "set_price(uint64)void"
+    method "opt_in_to_asset(pay)void"
+    method "buy(pay,uint64)void"
+    method "delete_application()void"
+    txna ApplicationArgs 0
+    match __puya_arc4_router___create_application_route@2 __puya_arc4_router___set_price_route@3 __puya_arc4_router___opt_in_to_asset_route@4 __puya_arc4_router___buy_route@5 __puya_arc4_router___delete_application_route@6
+    int 0
+    retsub
+
+__puya_arc4_router___create_application_route@2:
+    txn OnCompletion
+    !
+    assert // OnCompletion is NoOp
+    txn ApplicationID
+    !
+    assert // is creating
+    txna ApplicationArgs 1
+    btoi
+    txnas Assets
+    txna ApplicationArgs 2
+    btoi
+    callsub create_application
+    int 1
+    retsub
+
+__puya_arc4_router___set_price_route@3:
+    txn OnCompletion
+    !
+    assert // OnCompletion is NoOp
+    txn ApplicationID
+    assert // is not creating
+    txna ApplicationArgs 1
+    btoi
+    callsub set_price
+    int 1
+    retsub
+
+__puya_arc4_router___opt_in_to_asset_route@4:
+    txn OnCompletion
+    !
+    assert // OnCompletion is NoOp
+    txn ApplicationID
+    assert // is not creating
+    txn GroupIndex
+    int 1
+    -
+    dup
+    gtxns TypeEnum
+    int pay
+    ==
+    assert // transaction type is pay
+    callsub opt_in_to_asset
+    int 1
+    retsub
+
+__puya_arc4_router___buy_route@5:
+    txn OnCompletion
+    !
+    assert // OnCompletion is NoOp
+    txn ApplicationID
+    assert // is not creating
+    txn GroupIndex
+    int 1
+    -
+    dup
+    gtxns TypeEnum
+    int pay
+    ==
+    assert // transaction type is pay
+    txna ApplicationArgs 1
+    btoi
+    callsub buy
+    int 1
+    retsub
+
+__puya_arc4_router___delete_application_route@6:
+    txn OnCompletion
+    int DeleteApplication
+    ==
+    assert // OnCompletion is DeleteApplication
+    txn ApplicationID
+    assert // is not creating
+    callsub delete_application
+    int 1
+    retsub
+
+__puya_arc4_router___after_if_else@10:
+    int 0
+    retsub
+
+
+// smart_contracts.digital_marketplace.contract.DigitalMarketplace.create_application(asset_id: uint64, unitary_price: uint64) -> void:
+create_application:
+    proto 2 0
+    byte "asset_id"
+    frame_dig -2
+    app_global_put
+    byte "unitary_price"
+    frame_dig -1
+    app_global_put
+    retsub
+
+
+// smart_contracts.digital_marketplace.contract.DigitalMarketplace.set_price(unitary_price: uint64) -> void:
+set_price:
+    proto 1 0
+    txn Sender
+    global CreatorAddress
+    ==
+    assert
+    byte "unitary_price"
+    frame_dig -1
+    app_global_put
+    retsub
+
+
+// smart_contracts.digital_marketplace.contract.DigitalMarketplace.opt_in_to_asset(mbr_pay: uint64) -> void:
+opt_in_to_asset:
+    proto 1 0
+    global CurrentApplicationAddress
+    int 0
+    byte "asset_id"
+    app_global_get_ex
+    assert // check self.asset_id exists
+    asset_holding_get AssetBalance
+    bury 1
+    !
+    assert // Invalid addr
+    frame_dig -1
+    gtxns Receiver
+    global CurrentApplicationAddress
+    ==
+    assert // Invalid rec
+    frame_dig -1
+    gtxns Amount
+    global MinBalance
+    global AssetOptInMinBalance
+    +
+    ==
+    assert
+    itxn_begin
+    int 0
+    byte "asset_id"
+    app_global_get_ex
+    assert // check self.asset_id exists
+    global CurrentApplicationAddress
+    int 0
+    itxn_field AssetAmount
+    itxn_field AssetReceiver
+    itxn_field XferAsset
+    int axfer
+    itxn_field TypeEnum
+    int 0
+    itxn_field Fee
+    itxn_submit
+    retsub
+
+
+// smart_contracts.digital_marketplace.contract.DigitalMarketplace.buy(buyer_txn: uint64, quantity: uint64) -> void:
+buy:
+    proto 2 0
+    frame_dig -2
+    gtxns Sender
+    txn Sender
+    ==
+    assert
+    frame_dig -2
+    gtxns Receiver
+    global CurrentApplicationAddress
+    ==
+    assert
+    frame_dig -2
+    gtxns Amount
+    int 0
+    byte "unitary_price"
+    app_global_get_ex
+    assert // check self.unitary_price exists
+    frame_dig -1
+    *
+    ==
+    assert
+    itxn_begin
+    int 0
+    byte "asset_id"
+    app_global_get_ex
+    assert // check self.asset_id exists
+    txn Sender
+    frame_dig -1
+    itxn_field AssetAmount
+    itxn_field AssetReceiver
+    itxn_field XferAsset
+    int axfer
+    itxn_field TypeEnum
+    int 0
+    itxn_field Fee
+    itxn_submit
+    retsub
+
+
+// smart_contracts.digital_marketplace.contract.DigitalMarketplace.delete_application() -> void:
+delete_application:
+    proto 0 0
+    txn Sender
+    global CreatorAddress
+    ==
+    assert
+    int 0
+    byte "asset_id"
+    app_global_get_ex
+    assert // check self.asset_id exists
+    itxn_begin
+    int 0
+    byte "asset_id"
+    app_global_get_ex
+    swap
+    cover 2
+    assert // check self.asset_id exists
+    global CurrentApplicationAddress
+    swap
+    asset_params_get AssetCreator
+    assert // asset exists
+    itxn_field AssetCloseTo
+    int 0
+    itxn_field AssetAmount
+    itxn_field AssetReceiver
+    itxn_field XferAsset
+    int axfer
+    itxn_field TypeEnum
+    int 0
+    itxn_field Fee
+    itxn_submit
+    itxn_begin
+    global CurrentApplicationAddress
+    global CreatorAddress
+    itxn_field CloseRemainderTo
+    int 0
+    itxn_field Amount
+    itxn_field Receiver
+    int pay
+    itxn_field TypeEnum
+    int 0
+    itxn_field Fee
+    itxn_submit
+    retsub
