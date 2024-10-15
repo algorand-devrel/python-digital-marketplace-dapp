@@ -24,13 +24,8 @@ def deploy(
         indexer_client=indexer_client,
     )
 
-    app_client.deploy(
-        on_schema_break=algokit_utils.OnSchemaBreak.AppendApp,
-        on_update=algokit_utils.OnUpdate.AppendApp,
-    )
-    name = "world"
-    response = app_client.hello(name=name)
-    logger.info(
-        f"Called hello on {app_spec.contract.name} ({app_client.app_id}) "
-        f"with name={name}, received: {response.return_value}"
-    )
+    asset_id = 724221228  # The asset id we want to list
+    price = 5000000  # The price we want to list the asset for
+
+    app_client.create_create_application(asset_id=asset_id, unitary_price=price)
+    logger.info(f"App {app_client.app_id} deployed by {deployer.address}")
